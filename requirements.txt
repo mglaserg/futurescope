@@ -1,0 +1,10 @@
+streamlit
+pandas
+numpy
+plotly
+python-dotenv
+requests
+databento==0.82.0
+databento-dbn==0.63.0
+yfinance
+pytest
