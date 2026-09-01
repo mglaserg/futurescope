@@ -301,6 +301,34 @@ def backtest_relative_value_mean_reversion(
     return out
 
 
+def relative_value_zscore_history(
+    history: pd.DataFrame,
+    lookback: int = 20,
+) -> pd.DataFrame:
+    """Return the lagged rolling z-score series used by the RV signal engine.
+
+    The rolling mean and standard deviation are shifted one observation so the
+    current structure value is compared only with information that was already
+    available before that observation. This makes the plotted z-score identical
+    to the z-score used by :func:`relative_value_trade_signal`.
+    """
+    if "value" not in history.columns:
+        raise ValueError("history is missing required column: value")
+    if lookback < 3:
+        raise ValueError("lookback must be at least 3")
+
+    out = history.copy()
+    if "snapshot_date" in out.columns:
+        out = out.sort_values("snapshot_date")
+    out = out.reset_index(drop=True)
+
+    min_periods = min(lookback, max(3, lookback // 2))
+    rolling_mean = out["value"].rolling(lookback, min_periods=min_periods).mean().shift(1)
+    rolling_std = out["value"].rolling(lookback, min_periods=min_periods).std(ddof=1).shift(1)
+    out["signal_zscore"] = (out["value"] - rolling_mean) / rolling_std.replace(0.0, np.nan)
+    return out
+
+
 def relative_value_trade_signal(
     history: pd.DataFrame,
     lookback: int = 20,
@@ -343,7 +371,7 @@ def relative_value_trade_signal(
     if not 0.5 <= min_win_rate <= 1.0:
         raise ValueError("min_win_rate must be between 0.5 and 1.0")
 
-    out = history.copy().sort_values("snapshot_date").reset_index(drop=True)
+    out = relative_value_zscore_history(history, lookback=lookback)
     if out.empty:
         return {
             "signal": "INSUFFICIENT HISTORY",
@@ -356,11 +384,6 @@ def relative_value_trade_signal(
             "behavior": "unknown",
             "horizon": horizon,
         }
-
-    min_periods = min(lookback, max(3, lookback // 2))
-    mean = out["value"].rolling(lookback, min_periods=min_periods).mean().shift(1)
-    std = out["value"].rolling(lookback, min_periods=min_periods).std(ddof=1).shift(1)
-    out["signal_zscore"] = (out["value"] - mean) / std.replace(0.0, np.nan)
 
     forward_change = np.full(len(out), np.nan, dtype=float)
     for i in range(len(out) - horizon):

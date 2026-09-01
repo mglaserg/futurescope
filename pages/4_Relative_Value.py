@@ -16,6 +16,7 @@ from futurescope.analytics.relative_value import (
     canonical_trade_weights,
     relative_value_statistics,
     relative_value_trade_signal,
+    relative_value_zscore_history,
 )
 from futurescope.config import MARKETS
 from futurescope.rv_store import (
@@ -286,8 +287,14 @@ else:
         )
 
         st.markdown("### Directional signal")
+        long_weights = canonical_trade_weights(selected_order)
+        short_weights = -long_weights
+        long_ratio = " : ".join(f"{int(x):+d}" for x in long_weights)
+        short_ratio = " : ".join(f"{int(x):+d}" for x in short_weights)
         st.caption(
-            "An extreme z-score is only an anomaly. This panel asks what comparable historical extremes actually did next, without crossing contract-roll boundaries."
+            f"LONG/SHORT refers to the selected {STRUCTURE_NAMES[selected_order]} as a basket, not to the front month alone. "
+            f"LONG = {long_ratio}; SHORT = {short_ratio}. An extreme z-score is only an anomaly: high does not automatically mean SHORT and low does not automatically mean LONG. "
+            "The directional signal asks what comparable historical extremes actually did next, without crossing contract-roll boundaries."
         )
         s1, s2, s3, s4 = st.columns(4)
         with s1:
@@ -340,6 +347,31 @@ else:
         )
         fig.update_layout(xaxis_title="Snapshot date", yaxis_title=f"Order-{selected_order} normalized measure")
         st.plotly_chart(fig, use_container_width=True)
+
+        z_history = relative_value_zscore_history(history, lookback=int(signal_lookback))
+        z_fig = px.line(
+            z_history,
+            x="snapshot_date",
+            y="signal_zscore",
+            markers=True,
+            title=f"Lagged rolling z-score · {int(signal_lookback)}-observation lookback",
+        )
+        z_fig.add_hline(y=0.0, line_dash="dot", annotation_text="0")
+        z_fig.add_hline(
+            y=float(signal_entry_z),
+            line_dash="dash",
+            annotation_text=f"+{float(signal_entry_z):.2f} threshold",
+        )
+        z_fig.add_hline(
+            y=-float(signal_entry_z),
+            line_dash="dash",
+            annotation_text=f"-{float(signal_entry_z):.2f} threshold",
+        )
+        z_fig.update_layout(xaxis_title="Snapshot date", yaxis_title="Signal z-score")
+        st.plotly_chart(z_fig, use_container_width=True)
+        st.caption(
+            "This is the same lagged rolling z-score used by the directional signal. The ± threshold lines mark where an observation becomes eligible for historical analogue testing; crossing a line alone does not force a mean-reversion trade."
+        )
 
         st.dataframe(
             history.sort_values("snapshot_date", ascending=False),

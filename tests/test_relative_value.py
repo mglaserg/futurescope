@@ -10,6 +10,7 @@ from futurescope.analytics.relative_value import (
     canonical_trade_weights,
     relative_value_statistics,
     relative_value_trade_signal,
+    relative_value_zscore_history,
     risk_adjusted_trade_weights,
     time_normalized_coefficients,
     time_normalized_trade_value,
@@ -166,3 +167,18 @@ def test_trade_signal_requires_current_extreme():
     history.loc[history.index[-1], "value"] = 0.0
     result = relative_value_trade_signal(history, lookback=10, entry_z=2.0, horizon=1, min_analogs=4)
     assert result["signal"] == "NO SIGNAL"
+
+
+def test_zscore_history_matches_signal_engine_current_zscore():
+    history = _signal_history([-1.0, -0.8, -1.2, -0.9, -1.1, -0.7], z_side="high")
+    z_history = relative_value_zscore_history(history, lookback=10)
+    result = relative_value_trade_signal(
+        history, lookback=10, entry_z=2.0, horizon=1, min_analogs=4, min_win_rate=0.55
+    )
+
+    assert "signal_zscore" in z_history.columns
+    assert math.isclose(
+        float(z_history.iloc[-1]["signal_zscore"]),
+        float(result["current_zscore"]),
+        rel_tol=1e-12,
+    )
