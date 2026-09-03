@@ -10,7 +10,7 @@ load_dotenv()
 st.set_page_config(page_title="Futurescope", page_icon="📈", layout="wide")
 
 st.title("Futurescope")
-st.caption("Futures term structure, basis, carry, and VIX-complex research")
+st.caption("Futures curve relative value, carry, basis, and VIX-complex research")
 
 key_ok = bool(os.getenv("DATABENTO_API_KEY"))
 if key_ok:
@@ -20,18 +20,19 @@ else:
 
 st.markdown(
     """
-### V1 workflow
+### Current workflow
 
-Use the pages in the sidebar:
+- **ES + GC Monitor** — preferred current-state screen. Shows curve shape, current z-score/percentile, and exchange-listed spread-book liquidity/costs without revealing conditional forward outcomes.
+- **Relative Value** — slope, butterfly, and double-butterfly finite-difference research. Historical diagnostics are logged as research looks.
+- **Trade Builder** — translates LONG/SHORT RV structures into exact futures baskets and dollar economics.
+- **Historical Playback** — replay cached curves; explicit future-outcome reveals are logged.
+- **Daily Opportunities** — historical grid-search surface; every scan is logged before results are shown.
+- **Carry Screener / Curve Explorer / VIX Complex** — original market and term-structure views.
 
-- **Carry Screener** — compare GC, CL, ES, ZN, and VX at one as-of date.
-- **Curve Explorer** — inspect an individual curve, spot basis when available, and implied carry.
-- **VIX Complex** — view VX futures alongside official Cboe VIX-family indices.
+Futurescope keeps **spot-vs-futures basis**, **calendar-curve relative value**, and **VIX term structure** conceptually separate. Crypto perpetual carry remains outside the Futurescope core project.
 
-Futurescope distinguishes **spot-vs-futures basis** from **calendar-curve carry**. A positive basis is not automatically an arbitrage: financing, storage, dividends/income, execution, and margin liquidity still matter.
-
-V1 intentionally uses Databento's **historical API** rather than requiring a live exchange-data license. Requests are cached locally in `cache/`.
+The research rule is now simple: **current state is cheap to inspect; historical outcome questions are counted.** See `docs/research_protocol.md` and `research_cli.py` for the lightweight SQLite/YAML audit workflow.
 """
 )
 
-st.info("Start with Curve Explorer → GC to validate your Databento connection, then open the screener.")
+st.info("Start with **ES + GC Monitor** for the validation-safe current-state workflow.")

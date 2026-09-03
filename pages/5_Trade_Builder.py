@@ -13,6 +13,7 @@ from futurescope.analytics.relative_value import (
     relative_value_trade_signal,
 )
 from futurescope.config import MARKETS
+from futurescope.research_logging import log_dashboard_look
 from futurescope.rv_store import CurveSnapshotStore, load_cached_curve_history, load_relative_value_curve
 from futurescope.trading import CONTRACT_SPECS, build_trade_ticket
 
@@ -89,6 +90,20 @@ if history.empty:
         "behavior": "unknown",
     }
 else:
+    trade_builder_look_id = log_dashboard_look(
+        "trade_builder_signal",
+        {
+            "market": symbol,
+            "as_of": as_of.isoformat(),
+            "order": int(order),
+            "position": int(position),
+            "lookback": int(lookback),
+            "entry_z": float(entry_z),
+            "horizon": int(horizon),
+            "min_analogs": int(min_analogs),
+        },
+        "Trade Builder requested historical directional signal / expected move",
+    )
     signal_result = relative_value_trade_signal(
         history,
         lookback=int(lookback),
@@ -97,6 +112,11 @@ else:
         min_analogs=int(min_analogs),
         min_win_rate=0.55,
     )
+
+if not history.empty and trade_builder_look_id is not None:
+    st.caption(f"Historical Trade Builder query logged as research look #{trade_builder_look_id}.")
+elif not history.empty:
+    st.warning("Research registry logging failed for the Trade Builder historical query.")
 
 q1, q2, q3, q4 = st.columns(4)
 q1.metric("Futurescope signal", str(signal_result["signal"]))

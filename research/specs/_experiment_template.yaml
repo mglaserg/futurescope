@@ -1,0 +1,41 @@
+{
+  "_comment": "Copy this file to a new name and commit it BEFORE revealing historical outcomes. JSON is valid YAML 1.2; the initial registry intentionally uses this dependency-free subset.",
+  "experiment_id": "ES_EXAMPLE_001",
+  "family": "es_calendar_rv",
+  "market": "ES",
+  "status": "PENDING",
+  "prior_look": false,
+  "mechanism": "State the economic mechanism before the search: who is plausibly on the other side, why the distortion can persist, why they cannot simply wait, and why arbitrage capital does not instantly remove it.",
+  "counterparty": "Describe the constrained / hedging / forced-flow participant.",
+  "prediction": "Freeze the expected direction, structure family, horizon, and economic effect.",
+  "falsifiers": [
+    "A pre-specified observation that would contradict the mechanism.",
+    "A second falsifier that is not invented after seeing the result."
+  ],
+  "candidate_universe": {
+    "structures": ["slope"],
+    "positions": ["F1-F2"],
+    "horizons": [5],
+    "thresholds": [-2.0]
+  },
+  "cost_gate": {
+    "source": "exchange_listed_spread_book",
+    "max_width_ticks": 2.0,
+    "min_top_depth": 1,
+    "min_daily_volume": 1,
+    "cost_hurdle_price_units": 0.0
+  },
+  "power": {
+    "_comment": "Placeholders: replace prospectively from training data/mechanism before allocating a holdout block.",
+    "n_eff": 40,
+    "expected_effect": 1.0,
+    "sigma": 2.0,
+    "cost_hurdle": 0.25,
+    "confidence": 0.95
+  },
+  "holdout": {
+    "block_id": "H1",
+    "evaluations_allowed": 1
+  },
+  "notes": "If the precision gate says LIKELY UNRESOLVABLE, do not spend the holdout block."
+}

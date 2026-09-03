@@ -19,6 +19,7 @@ from futurescope.analytics.relative_value import (
     relative_value_zscore_history,
 )
 from futurescope.config import MARKETS
+from futurescope.research_logging import log_dashboard_look
 from futurescope.rv_store import (
     CurveSnapshotStore,
     load_cached_curve_history,
@@ -267,6 +268,21 @@ else:
     if history.empty:
         st.info("The cached snapshots do not contain enough contracts for this structure.")
     else:
+        diagnostics_look_id = log_dashboard_look(
+            "rv_historical_diagnostics",
+            {
+                "market": symbol,
+                "as_of": as_of.isoformat(),
+                "order": int(selected_order),
+                "position": int(selected_position),
+                "history_end": str(pd.to_datetime(history["snapshot_date"]).max()),
+            },
+            "Relative Value page historical persistence/half-life diagnostics",
+        )
+        if diagnostics_look_id is not None:
+            st.caption(f"Research look logged as #{diagnostics_look_id} before historical diagnostics were shown.")
+        else:
+            st.warning("Research registry logging failed; these historical diagnostics are being shown without an audit entry.")
         stats = relative_value_statistics(history["value"])
         zscore = stats["zscore"]
         anomaly = "Normal"
@@ -306,6 +322,20 @@ else:
         with s4:
             signal_min_analogs = st.number_input("Minimum analogues", min_value=1, value=5, step=1, key="rv_signal_min_analogs")
 
+        signal_look_id = log_dashboard_look(
+            "rv_directional_signal",
+            {
+                "market": symbol,
+                "as_of": as_of.isoformat(),
+                "order": int(selected_order),
+                "position": int(selected_position),
+                "lookback": int(signal_lookback),
+                "entry_z": float(signal_entry_z),
+                "horizon": int(signal_horizon),
+                "min_analogs": int(signal_min_analogs),
+            },
+            "Directional signal requested from historical conditional outcomes",
+        )
         signal_result = relative_value_trade_signal(
             history,
             lookback=int(signal_lookback),
@@ -315,6 +345,10 @@ else:
             min_win_rate=0.55,
         )
         signal_name = str(signal_result["signal"])
+        if signal_look_id is not None:
+            st.caption(f"Directional historical query logged as research look #{signal_look_id}.")
+        else:
+            st.warning("Research registry logging failed for this directional historical query.")
         q1, q2, q3, q4 = st.columns(4)
         q1.metric("Signal", signal_name)
         q2.metric("Signal z-score", "N/A" if pd.isna(signal_result["current_zscore"]) else f"{signal_result['current_zscore']:.2f}")
@@ -388,7 +422,8 @@ else:
             "The history follows relative curve slots (F1/F2/etc.), not fixed raw symbols. Contract-roll changes are shown explicitly in the table. Full executable P&L backtests should handle roll boundaries, contract multipliers, transaction costs, and market-specific risk scaling."
         )
 
-        with st.expander("Mean-reversion backtest proxy"):
+        run_proxy = st.checkbox("Run mean-reversion backtest proxy (logs a research look)", value=False)
+        if run_proxy:
             b1, b2, b3 = st.columns(3)
             with b1:
                 lookback = st.number_input("Signal lookback (observations)", min_value=3, value=20, step=1)
@@ -400,6 +435,23 @@ else:
             if exit_z >= entry_z:
                 st.warning("Exit |z| must be smaller than entry |z|.")
             else:
+                proxy_look_id = log_dashboard_look(
+                    "rv_mean_reversion_proxy",
+                    {
+                        "market": symbol,
+                        "as_of": as_of.isoformat(),
+                        "order": int(selected_order),
+                        "position": int(selected_position),
+                        "lookback": int(lookback),
+                        "entry_z": float(entry_z),
+                        "exit_z": float(exit_z),
+                    },
+                    "Mean-reversion P&L proxy requested from historical RV series",
+                )
+                if proxy_look_id is not None:
+                    st.caption(f"Backtest proxy logged as research look #{proxy_look_id} before P&L was shown.")
+                else:
+                    st.warning("Research registry logging failed for this backtest proxy.")
                 bt = backtest_relative_value_mean_reversion(
                     history,
                     lookback=int(lookback),

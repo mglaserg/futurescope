@@ -9,12 +9,14 @@ from dotenv import load_dotenv
 
 from futurescope.config import MARKETS
 from futurescope.opportunities import scan_market_opportunities
+from futurescope.research_logging import log_dashboard_look
 from futurescope.rv_store import load_cached_curve_history, load_relative_value_curve
 
 load_dotenv()
 st.set_page_config(page_title="Daily Opportunities | Futurescope", layout="wide")
 st.title("Daily Opportunity Dashboard")
 st.caption("Rank slope, butterfly, and double-butterfly relative-value structures across Futurescope markets using current extremeness plus historical directional evidence.")
+st.warning("This page is a historical search surface. Each scan is logged as a research look. Use **ES + GC Monitor** for current-state inspection without revealing conditional forward outcomes.")
 
 c1, c2 = st.columns(2)
 with c1:
@@ -38,6 +40,23 @@ st.caption(
 )
 
 if st.button("Scan Futurescope markets", type="primary"):
+    grid_look_id = log_dashboard_look(
+        "daily_opportunity_grid",
+        {
+            "as_of": as_of.isoformat(),
+            "markets": list(MARKETS),
+            "orders": [1, 2, 3],
+            "lookback": int(lookback),
+            "entry_z": float(entry_z),
+            "horizon": int(horizon),
+            "min_analogs": int(min_analogs),
+        },
+        "Daily Opportunity Dashboard enumerated historical conditional outcomes across the grid",
+    )
+    if grid_look_id is not None:
+        st.caption(f"Grid search logged as research look #{grid_look_id} before results were revealed.")
+    else:
+        st.warning("Research registry logging failed for this opportunity-grid search.")
     all_rows: list[pd.DataFrame] = []
     errors: list[str] = []
     progress = st.progress(0.0)

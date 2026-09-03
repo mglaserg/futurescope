@@ -1,0 +1,26 @@
+{
+  "looks": [
+    {
+      "look_id": "GC_SLOPE_DEMO_PRIOR_LOOK",
+      "observed_in_project": "2026-08-26",
+      "market": "GC",
+      "structure": "F1-F2 calendar slope",
+      "status": "EXPLORATORY_PRIOR_LOOK",
+      "actual_market_dates": null,
+      "entry": {
+        "front": 4331.9,
+        "second": 4352.9,
+        "slope": -21.0,
+        "approximate_zscore": -3.0
+      },
+      "next_observation": {
+        "front": 4522.7,
+        "second": 4533.3,
+        "slope": -10.6
+      },
+      "observed_change_points": 10.4,
+      "observed_gross_pnl_per_1x1_gc_spread_usd": 1040.0,
+      "note": "This outcome was already observed before the formal Futurescope/EdgeLab protocol. It may be used for development and demonstrations but not as an untouched validation result for the GC calendar-slope hypothesis."
+    }
+  ]
+}

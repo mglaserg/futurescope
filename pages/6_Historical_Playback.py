@@ -16,6 +16,7 @@ from futurescope.analytics.relative_value import (
     relative_value_zscore_history,
 )
 from futurescope.config import MARKETS
+from futurescope.research_logging import log_dashboard_look
 from futurescope.rv_store import CurveSnapshotStore, load_cached_curve_history
 
 load_dotenv()
@@ -118,6 +119,20 @@ with s3:
 with s4:
     min_analogs = st.number_input("Minimum analogues", min_value=1, value=5, step=1)
 
+playback_signal_look_id = log_dashboard_look(
+    "historical_playback_signal",
+    {
+        "market": symbol,
+        "playback_date": playback_date.isoformat(),
+        "order": int(order),
+        "position": int(position),
+        "lookback": int(lookback),
+        "entry_z": float(entry_z),
+        "horizon": int(horizon),
+        "min_analogs": int(min_analogs),
+    },
+    "Historical Playback requested signal using prior conditional outcomes",
+)
 signal = relative_value_trade_signal(
     history,
     lookback=int(lookback),
@@ -126,6 +141,11 @@ signal = relative_value_trade_signal(
     min_analogs=int(min_analogs),
     min_win_rate=0.55,
 )
+if playback_signal_look_id is not None:
+    st.caption(f"Playback historical signal query logged as research look #{playback_signal_look_id}.")
+else:
+    st.warning("Research registry logging failed for the playback historical signal query.")
+
 q1, q2, q3, q4 = st.columns(4)
 q1.metric("Signal", str(signal["signal"]))
 q2.metric("Lagged z-score", "N/A" if pd.isna(signal["current_zscore"]) else f"{signal['current_zscore']:.2f}")
@@ -149,7 +169,23 @@ z_fig.add_vline(x=pd.Timestamp(playback_date).timestamp() * 1000, line_dash="das
 z_fig.update_layout(title="Lagged rolling z-score at playback date", xaxis_title="Snapshot date", yaxis_title="Z-score")
 st.plotly_chart(z_fig, use_container_width=True)
 
-with st.expander("Reveal what happened next"):
+reveal_forward = st.checkbox("Reveal what happened next (logs a research look)", value=False)
+if reveal_forward:
+    reveal_look_id = log_dashboard_look(
+        "historical_playback_forward_reveal",
+        {
+            "market": symbol,
+            "playback_date": playback_date.isoformat(),
+            "order": int(order),
+            "position": int(position),
+            "horizon": int(horizon),
+        },
+        "User explicitly revealed future cached outcome in Historical Playback",
+    )
+    if reveal_look_id is not None:
+        st.caption(f"Forward-outcome reveal logged as research look #{reveal_look_id}.")
+    else:
+        st.warning("Research registry logging failed for this forward-outcome reveal.")
     st.caption("This section intentionally uses future cached snapshots for retrospective study. It is not used in the signal shown above.")
     full_history = build_relative_value_history(snapshots, order=order, position=position, value_column="time_normalized_value")
     full_history["snapshot_date"] = pd.to_datetime(full_history["snapshot_date"])

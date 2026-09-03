@@ -7,3 +7,5 @@ cache/*.csv
 cache/*.json
 .DS_Store
 *.csv
+*.sqlite
+*.sqlite3

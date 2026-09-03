@@ -1,0 +1,19 @@
+{
+  "_comment": "Define K disjoint blocks before any true validation result is revealed. Dates below are examples only.",
+  "blocks": [
+    {
+      "block_id": "H1",
+      "family": "es_calendar_rv",
+      "start_date": "2024-01-01",
+      "end_date": "2024-12-31",
+      "notes": "example only"
+    },
+    {
+      "block_id": "H2",
+      "family": "es_calendar_rv",
+      "start_date": "2025-01-01",
+      "end_date": "2025-12-31",
+      "notes": "example only"
+    }
+  ]
+}
