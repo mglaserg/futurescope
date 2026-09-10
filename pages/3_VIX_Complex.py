@@ -7,6 +7,8 @@ import plotly.graph_objects as go
 import streamlit as st
 from dotenv import load_dotenv
 
+from futurescope.ui import apply_futurescope_theme
+
 from futurescope.analytics import curve_state
 from futurescope.config import MARKETS
 from futurescope.providers import CboeIndexProvider
@@ -14,6 +16,7 @@ from futurescope.services import load_market_curve
 
 load_dotenv()
 st.set_page_config(page_title="VIX Complex | Futurescope", layout="wide")
+apply_futurescope_theme()
 st.title("VIX Complex")
 st.caption("VX futures from Databento plus official Cboe daily volatility-index histories.")
 

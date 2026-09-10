@@ -7,6 +7,8 @@ import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
 
+from futurescope.ui import apply_futurescope_theme
+
 from futurescope.config import MARKETS
 from futurescope.monitor import MonitorArchive, build_monitor_structures
 from futurescope.rv_store import CurveSnapshotStore, load_cached_curve_history
@@ -16,6 +18,7 @@ from futurescope.spread_market import SpreadCostGate, load_exchange_spread_costs
 
 load_dotenv()
 st.set_page_config(page_title="ES + GC Monitor | Futurescope", layout="wide")
+apply_futurescope_theme()
 st.title("ES + GC Monitor")
 st.caption(
     "Current-state instrument only: curve shape, statistical location, and exchange-listed spread liquidity/costs. "

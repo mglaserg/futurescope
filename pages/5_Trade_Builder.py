@@ -7,6 +7,8 @@ import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
 
+from futurescope.ui import apply_futurescope_theme
+
 from futurescope.analytics.relative_value import (
     STRUCTURE_NAMES,
     build_relative_value_history,
@@ -19,6 +21,7 @@ from futurescope.trading import CONTRACT_SPECS, build_trade_ticket
 
 load_dotenv()
 st.set_page_config(page_title="Trade Builder | Futurescope", layout="wide")
+apply_futurescope_theme()
 st.title("Trade Builder")
 st.caption("Turn a Futurescope relative-value signal into the exact futures basket, entry value, exit concept, and dollar P&L estimate.")
 

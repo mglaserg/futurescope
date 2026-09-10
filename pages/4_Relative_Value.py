@@ -8,6 +8,8 @@ import plotly.express as px
 import streamlit as st
 from dotenv import load_dotenv
 
+from futurescope.ui import apply_futurescope_theme
+
 from futurescope.analytics.relative_value import (
     STRUCTURE_NAMES,
     backtest_relative_value_mean_reversion,
@@ -28,6 +30,7 @@ from futurescope.rv_store import (
 
 load_dotenv()
 st.set_page_config(page_title="Relative Value | Futurescope", layout="wide")
+apply_futurescope_theme()
 st.title("Relative Value")
 st.caption(
     "Curve slope, curvature, and change-in-curvature trades as first-, second-, and third-order finite differences."

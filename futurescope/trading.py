@@ -40,6 +40,12 @@ CONTRACT_SPECS: dict[str, FuturesContractSpec] = {
         contract_description="NYMEX WTI Crude Oil · 1,000 barrels",
         source_note="CL is quoted in USD per barrel; one 1.00 price-point move is $1,000 per contract.",
     ),
+    "MES": FuturesContractSpec(
+        symbol="MES",
+        point_value_usd=5.0,
+        contract_description="Micro E-mini S&P 500 · $5 × index",
+        source_note="MES has a $5 multiplier, so one 1.00 index-point move is $5 per contract.",
+    ),
     "ES": FuturesContractSpec(
         symbol="ES",
         point_value_usd=50.0,

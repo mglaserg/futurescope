@@ -7,12 +7,15 @@ import plotly.express as px
 import streamlit as st
 from dotenv import load_dotenv
 
+from futurescope.ui import apply_futurescope_theme
+
 from futurescope.analytics import curve_state, excess_carry, fair_carry_rate
 from futurescope.config import MARKETS
 from futurescope.services import load_market_curve
 
 load_dotenv()
 st.set_page_config(page_title="Curve Explorer | Futurescope", layout="wide")
+apply_futurescope_theme()
 st.title("Curve Explorer")
 
 c1, c2, c3 = st.columns([1, 1, 1])

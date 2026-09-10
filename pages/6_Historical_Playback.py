@@ -8,6 +8,8 @@ import plotly.graph_objects as go
 import streamlit as st
 from dotenv import load_dotenv
 
+from futurescope.ui import apply_futurescope_theme
+
 from futurescope.analytics.relative_value import (
     STRUCTURE_NAMES,
     build_relative_value_history,
@@ -21,6 +23,7 @@ from futurescope.rv_store import CurveSnapshotStore, load_cached_curve_history
 
 load_dotenv()
 st.set_page_config(page_title="Historical Curve Playback | Futurescope", layout="wide")
+apply_futurescope_theme()
 st.title("Historical Curve Playback")
 st.caption("Scrub cached futures curves through time and inspect the exact slope, butterfly, double-butterfly, z-score, and signal that existed on each snapshot.")
 

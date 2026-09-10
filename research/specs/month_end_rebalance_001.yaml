@@ -1,0 +1,33 @@
+{
+  "_comment": "Imported published hypothesis. The historical strategy description/performance has already been seen, so this spec is PRIOR LOOK and is not an untouched validation claim.",
+  "experiment_id": "MONTH_END_REBALANCE_001",
+  "family": "month_end_60_40_rebalance_flow",
+  "market": "SPY_MES_TLT",
+  "status": "EXPLORATORY",
+  "prior_look": true,
+  "mechanism": "Scheduled month-end duration extension and asset-allocation rebalancing can create predictable stock/bond flow. SPY and IEF measure the drift of a hypothetical 60/40 portfolio; TLT expresses long-duration Treasury flow; SPY or MES expresses the equity leg.",
+  "counterparty": "Index trackers, balanced funds, pension/asset-allocation managers, and other investors whose benchmark or target weights induce calendar-scheduled rebalancing rather than purely price-sensitive trading.",
+  "prediction": "Freeze 60/40 bond rebalance pressure at the sixth-last trading-day close. At <= -50 bps, favor equities over the final five sessions; otherwise favor TLT. At >= +50 bps, favor long equities / short TLT over the first five sessions of the new month; otherwise remain in cash.",
+  "falsifiers": [
+    "The relationship is not stronger around the scheduled month-end window than comparable non-overlapping mid-month placebo windows.",
+    "The expected post-month-end reversal does not appear when the estimated rebalance flow is strongest.",
+    "Realistic SPY/MES and TLT execution costs eliminate the effect.",
+    "A genuinely untouched future validation window fails the frozen directional rules."
+  ],
+  "candidate_universe": {
+    "signal_assets": ["SPY", "IEF"],
+    "execution_assets": ["MES", "SPY", "TLT"],
+    "signal_day": "sixth_last_trading_day_close",
+    "windows": ["final_5_trading_days", "first_5_trading_days_next_month"],
+    "thresholds_bps": [-50, 50]
+  },
+  "cost_gate": {
+    "source": "observable_execution_market",
+    "notes": "Freeze realistic MES/SPY and TLT spread/commission/slippage assumptions before any internal replication or future validation."
+  },
+  "holdout": {
+    "block_id": null,
+    "evaluations_allowed": 0
+  },
+  "notes": "Use the new Futurescope page as a current-state monitor and trade translator. Any historical replication must be logged as a research look. A future untouched validation requires a separately registered holdout plan."
+}

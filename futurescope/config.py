@@ -73,3 +73,14 @@ CBOE_INDEX_URLS = {
     "OVX": "https://cdn.cboe.com/api/global/us_indices/daily_prices/OVX_History.csv",
     "GVZ": "https://cdn.cboe.com/api/global/us_indices/daily_prices/GVZ_History.csv",
 }
+
+
+MES_EXECUTION_CONFIG = MarketConfig(
+    symbol="MES",
+    name="Micro E-mini S&P 500",
+    dataset="GLBX.MDP3",
+    parent_symbol="MES.FUT",
+    reference_symbol=None,
+    reference_source=None,
+    units="index points",
+)

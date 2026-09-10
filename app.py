@@ -5,12 +5,18 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 
+from futurescope.ui import apply_futurescope_theme, hero
+
 load_dotenv()
 
 st.set_page_config(page_title="Futurescope", page_icon="📈", layout="wide")
-
-st.title("Futurescope")
-st.caption("Futures curve relative value, carry, basis, and VIX-complex research")
+apply_futurescope_theme()
+hero(
+    "FUTURES RESEARCH INSTRUMENT",
+    "Futurescope",
+    "A disciplined workspace for futures curves, relative value, carry, basis, calendar flows, and VIX term structure — with current-state monitoring kept separate from registered historical research.",
+    ["Databento", "Curve RV", "Trade Builder", "Audit-first research"],
+)
 
 key_ok = bool(os.getenv("DATABENTO_API_KEY"))
 if key_ok:
@@ -22,7 +28,8 @@ st.markdown(
     """
 ### Current workflow
 
-- **ES + GC Monitor** — preferred current-state screen. Shows curve shape, current z-score/percentile, and exchange-listed spread-book liquidity/costs without revealing conditional forward outcomes.
+- **Month-End Rebalance** — **high-priority flow monitor**. SPY/IEF estimate 60/40 rebalance pressure; execute the equity leg with MES or SPY and the duration leg with TLT.
+- **ES + GC Monitor** — preferred current-state curve screen. Shows curve shape, current z-score/percentile, and exchange-listed spread-book liquidity/costs without revealing conditional forward outcomes.
 - **Relative Value** — slope, butterfly, and double-butterfly finite-difference research. Historical diagnostics are logged as research looks.
 - **Trade Builder** — translates LONG/SHORT RV structures into exact futures baskets and dollar economics.
 - **Historical Playback** — replay cached curves; explicit future-outcome reveals are logged.
@@ -35,4 +42,4 @@ The research rule is now simple: **current state is cheap to inspect; historical
 """
 )
 
-st.info("Start with **ES + GC Monitor** for the validation-safe current-state workflow.")
+st.info("For the new calendar-flow trade, start with **Month-End Rebalance**. For curve RV, start with **ES + GC Monitor**.")

@@ -17,6 +17,7 @@ Crypto perpetual carry is intentionally kept outside Futurescope.
 - ES — E-mini S&P 500
 - ZN — 10-Year U.S. Treasury Note
 - VX — Cboe VIX futures
+- MES — Micro E-mini S&P 500 (execution leg for the month-end rebalance module)
 
 Futures curves come from Databento. Official Cboe daily CSVs supply VIX-family index history. GC uses goldprice.dev for recent XAU/USD daily references; Yahoo Finance remains a convenience S&P 500 cash-index reference until the ES timestamp/dividend/funding alignment layer is completed.
 
@@ -30,6 +31,7 @@ Futures curves come from Databento. Official Cboe daily CSVs supply VIX-family i
 - **Trade Builder** — exact basket legs, ratios, entry values, point-value economics, and research P&L concepts.
 - **Historical Playback** — cached curve replay and explicit retrospective reveals.
 - **Daily Opportunities** — historical search/ranking surface; scans are logged as research looks.
+- **Month-End Rebalance** — polished current-state 60/40 flow monitor using SPY/IEF for pressure, TLT for duration, and SPY or MES for the equity execution leg.
 
 ## Finite-difference hierarchy
 
@@ -125,6 +127,8 @@ The protocol is documented in:
 docs/research_protocol.md
 ```
 
+The month-end flow module is documented in `docs/month_end_rebalance.md`.
+
 Key rules:
 
 1. mechanism/counterparty/falsifier before search
@@ -187,7 +191,9 @@ python -m pytest -q
 
 ## Current roadmap
 
-Immediate focus is to **operate the ES + GC vertical slice and accumulate clean current-state observations**, not to add more protocol layers.
+**Highest-priority strategy addition:** operate and harden the new **SPY / MES + TLT Month-End Rebalance** monitor. The imported hypothesis is frozen at ±50 bps of 60/40 bond rebalance pressure, with the signal measured at the sixth-last trading-day close. Futurescope keeps this page current-state-only; internal historical validation belongs in the registered EdgeLab workflow.
+
+Immediate Futurescope infrastructure focus remains to **operate the ES + GC vertical slice and accumulate clean current-state observations**, not to add more protocol layers.
 
 Next research work, only after the audit/power plumbing has real data to consume:
 

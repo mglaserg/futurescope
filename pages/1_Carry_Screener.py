@@ -7,12 +7,15 @@ import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
 
+from futurescope.ui import apply_futurescope_theme
+
 from futurescope.analytics import curve_state, excess_carry
 from futurescope.config import MARKETS
 from futurescope.services import load_market_curve
 
 load_dotenv()
 st.set_page_config(page_title="Carry Screener | Futurescope", layout="wide")
+apply_futurescope_theme()
 st.title("Carry Screener")
 st.caption("Cross-market futures curve snapshot. Spot-based carry is shown only where a usable reference is configured.")
 

@@ -7,6 +7,8 @@ import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
 
+from futurescope.ui import apply_futurescope_theme
+
 from futurescope.config import MARKETS
 from futurescope.opportunities import scan_market_opportunities
 from futurescope.research_logging import log_dashboard_look
@@ -14,6 +16,7 @@ from futurescope.rv_store import load_cached_curve_history, load_relative_value_
 
 load_dotenv()
 st.set_page_config(page_title="Daily Opportunities | Futurescope", layout="wide")
+apply_futurescope_theme()
 st.title("Daily Opportunity Dashboard")
 st.caption("Rank slope, butterfly, and double-butterfly relative-value structures across Futurescope markets using current extremeness plus historical directional evidence.")
 st.warning("This page is a historical search surface. Each scan is logged as a research look. Use **ES + GC Monitor** for current-state inspection without revealing conditional forward outcomes.")
