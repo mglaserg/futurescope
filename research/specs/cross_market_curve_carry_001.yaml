@@ -1,0 +1,42 @@
+{
+  "_comment": "Exploratory candidate registered before any internal profitability grid. Current-state ranking may be viewed; historical outcome analysis must run through the audit workflow.",
+  "experiment_id": "CROSS_MARKET_CURVE_CARRY_001",
+  "family": "cross_market_curve_carry",
+  "market": "MULTI_FUTURES",
+  "status": "PENDING",
+  "prior_look": false,
+  "mechanism": "Backwardated futures curves can compensate holders for scarce inventory, convenience yield, financing/balance-sheet constraints, or risk-bearing; contango can represent the opposite carry burden. Cross-sectional ranking may therefore contain a persistent carry premium, but each market retains its own economic mechanism.",
+  "counterparty": "Hedgers, inventory holders/users, leveraged directional traders, volatility hedgers, and balance-sheet-constrained arbitrageurs whose demand for futures exposure is not purely expected-return maximizing.",
+  "prediction": "After market-specific measurement and liquidity gates, the highest current curve-carry markets should outperform the lowest curve-carry markets on the pre-specified expression and rebalance horizon, net of observable execution costs.",
+  "falsifiers": [
+    "The high-minus-low carry portfolio does not clear frozen transaction-cost and financing hurdles on the training window.",
+    "The result is dominated by one market or one crisis episode rather than a repeatable cross-sectional relationship.",
+    "Market-specific fair-value corrections eliminate the apparent ordering.",
+    "An untouched validation block fails the frozen ranking, expression, and rebalance specification."
+  ],
+  "candidate_universe": {
+    "markets": ["GC", "CL", "ES", "ZN", "VX"],
+    "score": "annualized_log_F1_over_F2",
+    "expressions_to_register_separately": ["outright_front", "calendar_spread"],
+    "long_rule": "highest_positive_carry",
+    "short_rule": "lowest_negative_carry",
+    "rebalance_horizon": null
+  },
+  "cost_gate": {
+    "source": "observable_outright_or_exchange_listed_spread_book",
+    "notes": "Freeze minimum volume/OI/depth and maximum crossing-cost thresholds before any profitability test. Calendar-spread expression should use the native spread book where available."
+  },
+  "power": {
+    "_comment": "Fill prospectively after defining one expression and rebalance horizon; do not spend a holdout block if the expected precision cannot clear costs.",
+    "n_eff": null,
+    "expected_effect": null,
+    "sigma": null,
+    "cost_hurdle": null,
+    "confidence": 0.95
+  },
+  "holdout": {
+    "block_id": null,
+    "evaluations_allowed": 0
+  },
+  "notes": "ZB is intentionally excluded from the first registered universe until Treasury CTD/implied-repo/DV01 measurement is complete. The dashboard may display ZB as an explicitly experimental curve object."
+}

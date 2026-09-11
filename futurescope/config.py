@@ -84,3 +84,14 @@ MES_EXECUTION_CONFIG = MarketConfig(
     reference_source=None,
     units="index points",
 )
+
+
+ZB_EXECUTION_CONFIG = MarketConfig(
+    symbol="ZB",
+    name="30-Year U.S. Treasury Bond",
+    dataset="GLBX.MDP3",
+    parent_symbol="ZB.FUT",
+    reference_symbol=None,
+    reference_source=None,
+    units="price points",
+)

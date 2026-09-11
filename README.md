@@ -189,9 +189,26 @@ Requests are cached locally. Use refresh only when you intentionally want a new 
 python -m pytest -q
 ```
 
+## Conductor handoff
+
+Futurescope now emits a broker-agnostic **trade intent** for Conductor instead of pretending strategy pages should own final sizing and execution. Trade Builder, Month-End Rebalance, and Cross-Market Curve Carry can export `conductor.trade_intent` JSON.
+
+Core boundary:
+
+```text
+Futurescope = what / why / lifecycle
+Conductor   = how much / permission / execution / reconciliation
+```
+
+The month-end module preserves **TLT as the reference duration exposure** and can prefer **ZB** for futures execution. ZB contract quantity is deliberately delegated to Conductor until CTD-derived DV01 sizing is production-ready.
+
+## Cross-Market Curve Carry
+
+The new Cross-Market Curve Carry page is the "DirtyCarry of futures" research candidate. It ranks the current F1/F2 curve using an annualized `log(F1/F2)` slope and can express the ranking either as classic outright-front carry or as calendar-spread curve RV. It is current-state-only and exports an exploratory Conductor intent; profitability remains subject to registered validation. See `docs/cross_market_curve_carry.md`.
+
 ## Current roadmap
 
-**Highest-priority strategy addition:** operate and harden the new **SPY / MES + TLT Month-End Rebalance** monitor. The imported hypothesis is frozen at ±50 bps of 60/40 bond rebalance pressure, with the signal measured at the sixth-last trading-day close. Futurescope keeps this page current-state-only; internal historical validation belongs in the registered EdgeLab workflow.
+**Highest-priority strategy additions:** operate and harden the **SPY / MES + TLT/ZB Month-End Rebalance** monitor and research the new **Cross-Market Curve Carry** candidate. The imported hypothesis is frozen at ±50 bps of 60/40 bond rebalance pressure, with the signal measured at the sixth-last trading-day close. Futurescope keeps this page current-state-only; internal historical validation belongs in the registered EdgeLab workflow.
 
 Immediate Futurescope infrastructure focus remains to **operate the ES + GC vertical slice and accumulate clean current-state observations**, not to add more protocol layers.
 

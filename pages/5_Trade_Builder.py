@@ -15,6 +15,7 @@ from futurescope.analytics.relative_value import (
     relative_value_trade_signal,
 )
 from futurescope.config import MARKETS
+from futurescope.conductor import intent_json, relative_value_trade_intent
 from futurescope.research_logging import log_dashboard_look
 from futurescope.rv_store import CurveSnapshotStore, load_cached_curve_history, load_relative_value_curve
 from futurescope.trading import CONTRACT_SPECS, build_trade_ticket
@@ -211,3 +212,26 @@ else:
     st.info("No historical expected-move estimate is attached to this manual/demo basket. The exact legs and entry value are still valid, but Futurescope is not assigning an expected dollar P&L.")
 
 st.warning("Trade Builder is a research/execution-planning aid. Margin, exchange/broker fees, live bid/ask, liquidity, market-specific fair value, and DV01 weighting for Treasury structures are not yet production-integrated.")
+
+
+st.subheader("Conductor handoff")
+rv_intent = relative_value_trade_intent(
+    ticket,
+    as_of=as_of,
+    validation_status="EXPLORATORY",
+    target_z=0.0,
+    max_holding_sessions=int(horizon),
+)
+st.markdown(
+    '<div class="fs-note"><strong>Intent, not order.</strong> Futurescope describes the basket and lifecycle. Conductor decides final size, risk permission, native-spread routing, and execution.</div>',
+    unsafe_allow_html=True,
+)
+with st.expander("Preview Conductor trade intent"):
+    st.code(intent_json(rv_intent), language="json")
+    st.download_button(
+        "Download Conductor intent",
+        data=intent_json(rv_intent),
+        file_name=f"futurescope_{symbol.lower()}_rv_{as_of.isoformat()}.json",
+        mime="application/json",
+        use_container_width=True,
+    )

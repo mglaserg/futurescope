@@ -58,6 +58,12 @@ CONTRACT_SPECS: dict[str, FuturesContractSpec] = {
         contract_description="10-Year U.S. Treasury Note · $100,000 face",
         source_note="ZN price is expressed in points; one full price point is $1,000 per contract. Use DV01 for risk-neutral RV ratios.",
     ),
+    "ZB": FuturesContractSpec(
+        symbol="ZB",
+        point_value_usd=1000.0,
+        contract_description="30-Year U.S. Treasury Bond · $100,000 face",
+        source_note="ZB price is expressed in points; one full price point is $1,000 per contract. Use CTD-derived DV01 for duration-equivalent sizing.",
+    ),
     "VX": FuturesContractSpec(
         symbol="VX",
         point_value_usd=1000.0,

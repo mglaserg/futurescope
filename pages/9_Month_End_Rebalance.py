@@ -8,7 +8,8 @@ import plotly.graph_objects as go
 import streamlit as st
 from dotenv import load_dotenv
 
-from futurescope.config import MES_EXECUTION_CONFIG
+from futurescope.config import MES_EXECUTION_CONFIG, ZB_EXECUTION_CONFIG
+from futurescope.conductor import intent_json, month_end_trade_intent
 from futurescope.month_end_rebalance import (
     STRONG_BUYING_THRESHOLD,
     STRONG_SELLING_THRESHOLD,
@@ -30,20 +31,21 @@ apply_futurescope_theme()
 hero(
     "HIGH PRIORITY · FLOW MONITOR",
     "Month-End Rebalance",
-    "A clean current-state implementation of the 60/40 rebalance-pressure trade: SPY and IEF measure the expected flow, TLT expresses duration, and MES can replace SPY as the futures execution leg.",
-    ["SPY / MES", "TLT", "60 / 40 flow", "No outcome mining"],
+    "A clean current-state implementation of the 60/40 rebalance-pressure trade: SPY and IEF measure expected flow, MES/SPY express equity, and TLT can be translated into ZB for futures execution.",
+    ["SPY / MES", "TLT → ZB", "60 / 40 flow", "Conductor-ready"],
 )
 
 with st.sidebar:
     st.header("Trade setup")
     as_of_requested = st.date_input("As-of close", value=date.today())
     equity_vehicle = st.radio("Equity execution", ["MES", "SPY"], horizontal=True)
+    duration_vehicle = st.radio("Duration execution", ["ZB", "TLT"], horizontal=True)
     leg_notional = st.number_input("Target notional per active leg", min_value=1_000, value=25_000, step=5_000)
     refresh = st.checkbox("Refresh market data", value=False)
     st.divider()
     st.caption("Frozen strategy thresholds")
     st.code("Strong bond selling ≤ -50 bps\nStrong bond buying ≥ +50 bps")
-    st.caption("SPY + IEF generate the pressure signal. TLT is the long-duration trading leg.")
+    st.caption("SPY + IEF generate the pressure signal. TLT defines the duration exposure; ZB is the preferred futures translation when selected.")
 
 
 @st.cache_data(ttl=900, show_spinner=False)
@@ -175,6 +177,9 @@ latest_tlt = nearest_price_on_or_before(prices["TLT"], data_as_of)
 mes_symbol = None
 mes_price = None
 mes_error = None
+zb_symbol = None
+zb_price = None
+zb_error = None
 if equity_vehicle == "MES" and instruction.equity_weight != 0:
     try:
         mes_curve, _, _ = load_market_curve(MES_EXECUTION_CONFIG, data_as_of, refresh=refresh)
@@ -183,6 +188,14 @@ if equity_vehicle == "MES" and instruction.equity_weight != 0:
             mes_price = float(mes_curve.iloc[0]["close"])
     except Exception as exc:
         mes_error = str(exc)
+if duration_vehicle == "ZB" and instruction.tlt_weight != 0:
+    try:
+        zb_curve, _, _ = load_market_curve(ZB_EXECUTION_CONFIG, data_as_of, refresh=refresh)
+        if not zb_curve.empty:
+            zb_symbol = str(zb_curve.iloc[0]["raw_symbol"])
+            zb_price = float(zb_curve.iloc[0]["close"])
+    except Exception as exc:
+        zb_error = str(exc)
 
 legs: list[dict[str, str]] = []
 if instruction.equity_weight != 0:
@@ -200,11 +213,19 @@ if instruction.equity_weight != 0:
         approx = qty * latest_spy[1]
         legs.append({"side": side, "symbol": "SPY", "meta": f"{qty} shares · ≈ ${approx:,.0f} notional · ${latest_spy[1]:,.2f}"})
 
-if instruction.tlt_weight != 0 and latest_tlt:
+if instruction.tlt_weight != 0:
     side = "BUY" if instruction.tlt_weight > 0 else "SELL"
-    qty = max(1, int(round(float(leg_notional) / latest_tlt[1])))
-    approx = qty * latest_tlt[1]
-    legs.append({"side": side, "symbol": "TLT", "meta": f"{qty} shares · ≈ ${approx:,.0f} notional · ${latest_tlt[1]:,.2f}"})
+    if duration_vehicle == "ZB":
+        quote = f" · {zb_price:.3f} quoted" if zb_price is not None else ""
+        legs.append({
+            "side": side,
+            "symbol": zb_symbol or "ZB front",
+            "meta": f"TLT-equivalent duration exposure · DV01 sizing delegated to Conductor{quote}",
+        })
+    elif latest_tlt:
+        qty = max(1, int(round(float(leg_notional) / latest_tlt[1])))
+        approx = qty * latest_tlt[1]
+        legs.append({"side": side, "symbol": "TLT", "meta": f"{qty} shares · ≈ ${approx:,.0f} notional · ${latest_tlt[1]:,.2f}"})
 
 if not legs:
     st.markdown('<div class="fs-card"><h4>No trade ticket</h4><p>The strategy is currently in cash or waiting for the scheduled signal close.</p></div>', unsafe_allow_html=True)
@@ -214,10 +235,41 @@ else:
         for leg in legs
     )
     st.markdown(f'<div class="fs-ticket">{leg_html}</div>', unsafe_allow_html=True)
-    if len(legs) == 2:
-        st.caption("Pair ticket uses equal target notional per leg as an execution translation. That sizing convention is not yet a validated risk-neutral hedge ratio.")
+    if len(legs) == 2 and duration_vehicle == "TLT":
+        st.caption("Cash ETF pair uses equal target notional per leg as an execution translation. That convention is not a validated risk-neutral hedge ratio.")
+    if duration_vehicle == "ZB" and instruction.tlt_weight != 0:
+        st.caption("ZB quantity is intentionally not guessed here. Conductor will size the TLT-referenced duration exposure using CTD/DV01 once the Treasury translator is production-ready.")
 if mes_error:
     st.warning(f"MES sizing could not be loaded from Databento: {mes_error}")
+if zb_error:
+    st.warning(f"ZB quote could not be loaded from Databento: {zb_error}")
+
+
+st.subheader("Conductor handoff")
+month_end_intent = month_end_trade_intent(
+    as_of=data_as_of,
+    phase=instruction.phase,
+    equity_weight=instruction.equity_weight,
+    duration_weight=instruction.tlt_weight,
+    equity_vehicle=equity_vehicle,
+    duration_vehicle=duration_vehicle,
+    pressure_bps=None if not np.isfinite(pressure_bps) else float(pressure_bps),
+    next_transition=instruction.next_transition,
+)
+st.markdown(
+    '<div class="fs-note"><strong>Strategy says what; Conductor handles how much/how.</strong> The intent preserves TLT as the reference duration exposure even when ZB is the preferred futures implementation.</div>',
+    unsafe_allow_html=True,
+)
+with st.expander("Preview Conductor trade intent"):
+    st.code(intent_json(month_end_intent), language="json")
+    st.download_button(
+        "Download Conductor intent",
+        data=intent_json(month_end_intent),
+        file_name=f"futurescope_month_end_{data_as_of.isoformat()}.json",
+        mime="application/json",
+        use_container_width=True,
+    )
+
 
 st.subheader("What created the signal?")
 left, right = st.columns([1.3, 1])
@@ -257,8 +309,8 @@ with right:
         """
         <div class="fs-card">
           <div class="fs-kicker">ROLE OF EACH INSTRUMENT</div>
-          <h4 style="margin-top:7px;">SPY + IEF measure. MES / SPY + TLT trade.</h4>
-          <p style="margin-top:7px;">IEF is deliberately the bond proxy used to estimate 60/40 drift. TLT expresses the long-duration flow. MES is the default Futurescope translation of the equity leg; SPY remains available for a cash-equity implementation.</p>
+          <h4 style="margin-top:7px;">SPY + IEF measure. MES / SPY + TLT / ZB execute.</h4>
+          <p style="margin-top:7px;">IEF estimates 60/40 drift. TLT defines the long-duration exposure. When ZB is selected, Futurescope passes a TLT-referenced duration intent downstream and Conductor owns CTD/DV01 sizing rather than using a naive notional conversion.</p>
         </div>
         """,
         unsafe_allow_html=True,

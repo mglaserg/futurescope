@@ -5,7 +5,7 @@
   "market": "SPY_MES_TLT",
   "status": "EXPLORATORY",
   "prior_look": true,
-  "mechanism": "Scheduled month-end duration extension and asset-allocation rebalancing can create predictable stock/bond flow. SPY and IEF measure the drift of a hypothetical 60/40 portfolio; TLT expresses long-duration Treasury flow; SPY or MES expresses the equity leg.",
+  "mechanism": "Scheduled month-end duration extension and asset-allocation rebalancing can create predictable stock/bond flow. SPY and IEF measure the drift of a hypothetical 60/40 portfolio; TLT defines the long-duration Treasury exposure; TLT or DV01-equivalent ZB can express the duration leg, while SPY or MES expresses the equity leg.",
   "counterparty": "Index trackers, balanced funds, pension/asset-allocation managers, and other investors whose benchmark or target weights induce calendar-scheduled rebalancing rather than purely price-sensitive trading.",
   "prediction": "Freeze 60/40 bond rebalance pressure at the sixth-last trading-day close. At <= -50 bps, favor equities over the final five sessions; otherwise favor TLT. At >= +50 bps, favor long equities / short TLT over the first five sessions of the new month; otherwise remain in cash.",
   "falsifiers": [
@@ -15,15 +15,29 @@
     "A genuinely untouched future validation window fails the frozen directional rules."
   ],
   "candidate_universe": {
-    "signal_assets": ["SPY", "IEF"],
-    "execution_assets": ["MES", "SPY", "TLT"],
+    "signal_assets": [
+      "SPY",
+      "IEF"
+    ],
+    "execution_assets": [
+      "MES",
+      "SPY",
+      "TLT",
+      "ZB"
+    ],
     "signal_day": "sixth_last_trading_day_close",
-    "windows": ["final_5_trading_days", "first_5_trading_days_next_month"],
-    "thresholds_bps": [-50, 50]
+    "windows": [
+      "final_5_trading_days",
+      "first_5_trading_days_next_month"
+    ],
+    "thresholds_bps": [
+      -50,
+      50
+    ]
   },
   "cost_gate": {
     "source": "observable_execution_market",
-    "notes": "Freeze realistic MES/SPY and TLT spread/commission/slippage assumptions before any internal replication or future validation."
+    "notes": "Freeze realistic MES/SPY and TLT/ZB execution-cost assumptions before any internal replication or future validation. ZB sizing must use CTD/DV01 rather than naive notional matching."
   },
   "holdout": {
     "block_id": null,
