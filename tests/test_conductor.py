@@ -59,3 +59,19 @@ def test_cross_market_intent_can_express_calendar_spreads():
     assert intent["action"] == "REBALANCE"
     assert intent["exposures"][0]["legs"][0]["ratio"] == 1.0
     assert intent["exposures"][1]["legs"][0]["ratio"] == -1.0
+
+
+def test_constant_maturity_intent_delegates_integerization_to_conductor():
+    from futurescope.conductor import constant_maturity_spread_intent
+
+    intent = constant_maturity_spread_intent(
+        market="VX",
+        as_of=date(2026, 9, 14),
+        near_dte=50,
+        far_dte=80,
+        direction="LONG",
+        listed_weights={"VX2": 0.6, "VX3": 0.1, "VX4": -0.7},
+    )
+    assert intent["strategy_id"] == "futurescope_vx_50d_80d_synthetic"
+    assert [x["ratio"] for x in intent["exposures"]] == [0.6, 0.1, -0.7]
+    assert intent["preferred_execution"]["integerization_owner"] == "Conductor"

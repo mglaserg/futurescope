@@ -18,12 +18,25 @@ Crypto perpetual carry is intentionally kept outside Futurescope.
 - ZN — 10-Year U.S. Treasury Note
 - VX — Cboe VIX futures
 - MES — Micro E-mini S&P 500 (execution leg for the month-end rebalance module)
+- ZB — 30-Year U.S. Treasury Bond (experimental execution/translation asset pending CTD/DV01 completion)
 
 Futures curves come from Databento. Official Cboe daily CSVs supply VIX-family index history. GC uses goldprice.dev for recent XAU/USD daily references; Yahoo Finance remains a convenience S&P 500 cash-index reference until the ES timestamp/dividend/funding alignment layer is completed.
+
+## Product workflow and navigation
+
+Futurescope now uses grouped top navigation so the product opens around jobs rather than a flat list of screens:
+
+1. **Start / Monitor** — what is happening now?
+2. **Trade** — what exactly is the exposure or basket?
+3. **Research** — does the idea have registered historical evidence?
+4. **Deep Dive** — raw/reference views when needed.
+
+The default Start page reduces the product to three questions: **See Today → Express It → Prove It**. Page-specific filters remain in the sidebar instead of competing with the global navigation.
 
 ## Current pages
 
 - **ES + GC Monitor** — current-state-only vertical slice. Shows curve shape, z-score/percentile location, exchange-listed strategy BBO/depth/volume, and an operational liquidity/cost gate.
+- **Synthetic Tenors** — constant-maturity futures points such as 50d and 80d, fixed-DTE slope/z-score history, listed-contract interpolation weights, and exploratory Conductor intent export.
 - **Carry Screener** — cross-market carry/basis screen.
 - **Curve Explorer** — individual futures curve and basis/carry view.
 - **VIX Complex** — VX curve plus official Cboe VIX-family indices.
@@ -191,7 +204,7 @@ python -m pytest -q
 
 ## Conductor handoff
 
-Futurescope now emits a broker-agnostic **trade intent** for Conductor instead of pretending strategy pages should own final sizing and execution. Trade Builder, Month-End Rebalance, and Cross-Market Curve Carry can export `conductor.trade_intent` JSON.
+Futurescope now emits a broker-agnostic **trade intent** for Conductor instead of pretending strategy pages should own final sizing and execution. Trade Builder, Synthetic Tenors, Month-End Rebalance, and Cross-Market Curve Carry can export `conductor.trade_intent` JSON.
 
 Core boundary:
 
@@ -202,11 +215,27 @@ Conductor   = how much / permission / execution / reconciliation
 
 The month-end module preserves **TLT as the reference duration exposure** and can prefer **ZB** for futures execution. ZB contract quantity is deliberately delegated to Conductor until CTD-derived DV01 sizing is production-ready.
 
+## Synthetic / constant-maturity futures
+
+Futurescope can now construct fixed-DTE futures points such as **50d** and **80d** by linearly interpolating the listed contracts that bracket each target maturity. It does not extrapolate beyond the available curve.
+
+A synthetic slope is defined consistently through time:
+
+```text
+synthetic_slope = F_50d - F_80d
+```
+
+Positive means backwardation and negative means contango under the Futurescope sign convention. Because the maturity targets stay fixed, the measurement avoids the changing-DTE meaning and roll discontinuity of a naive F1/F2 history. The page also collapses the two synthetic points back into current listed-contract exposure ratios and exports those ratios as an exploratory Conductor intent. Conductor still owns integer contract sizing and execution. See `docs/synthetic_tenors.md`.
+
 ## Cross-Market Curve Carry
 
 The new Cross-Market Curve Carry page is the "DirtyCarry of futures" research candidate. It ranks the current F1/F2 curve using an annualized `log(F1/F2)` slope and can express the ranking either as classic outright-front carry or as calendar-spread curve RV. It is current-state-only and exports an exploratory Conductor intent; profitability remains subject to registered validation. See `docs/cross_market_curve_carry.md`.
 
 ## Current roadmap
+
+**Product/UI track:** the Streamlit app now has a simplified grouped navigation and Start page. The longer-term modernization remains **Python quant/data logic → thin FastAPI layer → React + TypeScript + Vite frontend**, migrated incrementally rather than as a big-bang rewrite. Freeze/test the Python calculation API first; then move the Daily Opportunity Dashboard, Curve/Synthetic Viewer, Trade Builder, and remaining monitors into the React terminal experience.
+
+**Measurement track:** synthetic/constant-maturity tenors are now available for roll-clean 50d/80d-style curve measurements. Registered profitability/mean-reversion tests come later inside the audit workflow; the synthetic page itself is descriptive/current-state.
 
 **Highest-priority strategy additions:** operate and harden the **SPY / MES + TLT/ZB Month-End Rebalance** monitor and research the new **Cross-Market Curve Carry** candidate. The imported hypothesis is frozen at ±50 bps of 60/40 bond rebalance pressure, with the signal measured at the sixth-last trading-day close. Futurescope keeps this page current-state-only; internal historical validation belongs in the registered EdgeLab workflow.
 

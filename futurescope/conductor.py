@@ -232,3 +232,61 @@ def cross_market_carry_intent(
         research={"selection_count": len(exposures)},
         metadata={"sizing_owner": "Conductor"},
     )
+
+
+def constant_maturity_spread_intent(
+    *,
+    market: str,
+    as_of: date | datetime | str,
+    near_dte: float,
+    far_dte: float,
+    direction: str,
+    listed_weights: Mapping[str, float],
+    validation_status: str = "EXPLORATORY",
+) -> dict[str, Any]:
+    """Handoff for a fixed-DTE synthetic calendar slope.
+
+    Futurescope translates the synthetic 50d/80d-style exposure into current
+    listed-contract ratios. Conductor still owns portfolio sizing, integer-lot
+    realization, margin/risk permission, and execution.
+    """
+    market = market.upper().strip()
+    direction = direction.upper().strip()
+    if direction not in {"LONG", "SHORT"}:
+        raise ValueError("direction must be LONG or SHORT")
+    if near_dte <= 0 or far_dte <= near_dte:
+        raise ValueError("require 0 < near_dte < far_dte")
+    exposures = [
+        {
+            "type": "futures_leg",
+            "contract": str(contract),
+            "ratio": float(ratio),
+            "role": "synthetic_tenor_replication",
+        }
+        for contract, ratio in listed_weights.items()
+        if abs(float(ratio)) > 1e-12
+    ]
+    return make_trade_intent(
+        strategy_id=f"futurescope_{market.lower()}_{near_dte:g}d_{far_dte:g}d_synthetic",
+        action="ENTER" if exposures else "FLAT",
+        as_of=as_of,
+        validation_status=validation_status,
+        exposures=exposures,
+        preferred_execution={
+            "instrument_type": "listed_futures_basket",
+            "structure": "constant_maturity_calendar_spread",
+            "near_target_dte": float(near_dte),
+            "far_target_dte": float(far_dte),
+            "direction": direction,
+            "integerization_owner": "Conductor",
+        },
+        lifecycle={"exit_rule": "strategy_signal_change_or_registered_rule"},
+        research={
+            "measurement": "linear_price_interpolation_by_calendar_dte",
+            "synthetic_spread_definition": "near_price_minus_far_price",
+        },
+        metadata={
+            "sizing_owner": "Conductor",
+            "signal_owner": "Futurescope",
+        },
+    )

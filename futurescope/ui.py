@@ -85,7 +85,13 @@ def apply_futurescope_theme() -> None:
         .fs-leg .meta { color:var(--fs-muted); font-size:.82rem; margin-top:3px; }
         .fs-buy .side { color: var(--fs-green); } .fs-sell .side { color: var(--fs-red); }
         .fs-note { border-left:3px solid #0e7490; padding:11px 14px; background:rgba(236,254,255,.7); border-radius:0 14px 14px 0; color:#334155; font-size:.9rem; line-height:1.55; }
-        @media (max-width: 800px) { .fs-timeline, .fs-ticket { grid-template-columns: 1fr; } .fs-hero { padding:22px 20px; } }
+        .fs-workflow-card { min-height: 150px; margin-bottom: 10px; }
+        .fs-flow-strip { display:grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; align-items:center; gap:12px; padding:18px 20px; border:1px solid var(--fs-line); border-radius:22px; background:rgba(255,255,255,.86); }
+        .fs-flow-strip > div:not(.arrow) { min-width:0; }
+        .fs-flow-strip strong { display:block; color:var(--fs-ink); font-size:.95rem; }
+        .fs-flow-strip span { display:block; color:var(--fs-muted); margin-top:3px; font-size:.78rem; line-height:1.35; }
+        .fs-flow-strip .arrow { color:#94a3b8; font-size:1.25rem; }
+        @media (max-width: 800px) { .fs-timeline, .fs-ticket, .fs-flow-strip { grid-template-columns: 1fr; } .fs-flow-strip .arrow { transform: rotate(90deg); justify-self:center; } .fs-hero { padding:22px 20px; } }
         </style>
         """,
         unsafe_allow_html=True,
