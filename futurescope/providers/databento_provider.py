@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 import os
+from typing import Any
 
 import pandas as pd
 
@@ -20,12 +21,62 @@ class DatabentoProvider:
         self.db = db
         self.client = db.Historical(self.api_key)
         self.cache = LocalFrameCache(cache_dir)
+        self._availability_cache: dict[tuple[str, str], pd.Timestamp] = {}
 
     @staticmethod
     def _flatten(frame: pd.DataFrame) -> pd.DataFrame:
         if isinstance(frame.index, pd.MultiIndex) or frame.index.name is not None:
             frame = frame.reset_index()
         return frame.copy()
+
+    @staticmethod
+    def _utc_timestamp(value: Any) -> pd.Timestamp:
+        ts = pd.Timestamp(value)
+        if ts.tzinfo is None:
+            return ts.tz_localize("UTC")
+        return ts.tz_convert("UTC")
+
+    def _available_end(self, dataset: str, schema: str) -> pd.Timestamp:
+        """Return Databento's exclusive available end for one schema.
+
+        Historical availability can stop intraday on the current date.  Asking
+        for the next UTC midnight therefore produces Databento's
+        ``data_end_after_available_end`` 422.  Cache the metadata lookup for the
+        lifetime of this provider and prefer the schema-specific range when it
+        is supplied.
+        """
+        cache_key = (dataset, schema)
+        cached = self._availability_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        available = self.client.metadata.get_dataset_range(dataset=dataset)
+        schema_ranges = available.get("schema", {}) if isinstance(available, dict) else {}
+        schema_range = schema_ranges.get(schema, {}) if isinstance(schema_ranges, dict) else {}
+        raw_end = schema_range.get("end") if isinstance(schema_range, dict) else None
+        if not raw_end and isinstance(available, dict):
+            raw_end = available.get("end")
+        if not raw_end:
+            raise RuntimeError(f"Databento did not report an available end for {dataset}/{schema}.")
+
+        end = self._utc_timestamp(raw_end)
+        self._availability_cache[cache_key] = end
+        return end
+
+    def _bounded_window(
+        self,
+        dataset: str,
+        schema: str,
+        start: Any,
+        end: Any,
+    ) -> tuple[pd.Timestamp, pd.Timestamp] | None:
+        """Clamp a historical request to Databento's actual schema range."""
+        start_ts = self._utc_timestamp(start)
+        requested_end = self._utc_timestamp(end)
+        safe_end = min(requested_end, self._available_end(dataset, schema))
+        if safe_end <= start_ts:
+            return None
+        return start_ts, safe_end
 
     def _definitions(
         self,
@@ -41,8 +92,12 @@ class DatabentoProvider:
                 cached["expiration"] = pd.to_datetime(cached["expiration"], utc=True)
                 return cached
 
-        start = as_of - timedelta(days=3)
-        end = as_of + timedelta(days=1)
+        window = self._bounded_window(
+            dataset, "definition", as_of - timedelta(days=3), as_of + timedelta(days=1)
+        )
+        if window is None:
+            return pd.DataFrame()
+        start, end = window
         data = self.client.timeseries.get_range(
             dataset=dataset,
             symbols=parent_symbol,
@@ -87,8 +142,13 @@ class DatabentoProvider:
                 return cached
 
         # Look back far enough to survive weekends/holidays, then keep each contract's last bar.
-        start = as_of - timedelta(days=10)
-        end = as_of + timedelta(days=1)
+        # Current-day requests are clipped to Databento's schema-specific available end.
+        window = self._bounded_window(
+            dataset, "ohlcv-1d", as_of - timedelta(days=10), as_of + timedelta(days=1)
+        )
+        if window is None:
+            return pd.DataFrame()
+        start, end = window
         data = self.client.timeseries.get_range(
             dataset=dataset,
             symbols=parent_symbol,
@@ -130,8 +190,12 @@ class DatabentoProvider:
                         cached[column] = pd.to_datetime(cached[column], utc=True, errors="coerce")
                 return cached
 
-        start = as_of - timedelta(days=3)
-        end = as_of + timedelta(days=1)
+        window = self._bounded_window(
+            dataset, "definition", as_of - timedelta(days=3), as_of + timedelta(days=1)
+        )
+        if window is None:
+            return pd.DataFrame()
+        start, end = window
         data = self.client.timeseries.get_range(
             dataset=dataset,
             symbols=parent_symbol,
@@ -198,8 +262,12 @@ class DatabentoProvider:
                         cached[column] = pd.to_datetime(cached[column], utc=True, errors="coerce")
                 return cached
 
-        start = snapshot - pd.Timedelta(minutes=int(lookback_minutes))
-        end = snapshot + pd.Timedelta(minutes=1)
+        requested_start = snapshot - pd.Timedelta(minutes=int(lookback_minutes))
+        requested_end = snapshot + pd.Timedelta(minutes=1)
+        window = self._bounded_window(dataset, "bbo-1m", requested_start, requested_end)
+        if window is None:
+            return pd.DataFrame()
+        start, end = window
         data = self.client.timeseries.get_range(
             dataset=dataset,
             symbols=[str(x) for x in ids],
@@ -244,13 +312,17 @@ class DatabentoProvider:
                     cached["ts_event"] = pd.to_datetime(cached["ts_event"], utc=True, errors="coerce")
                 return cached
 
+        window = self._bounded_window(dataset, "ohlcv-1d", as_of, as_of + timedelta(days=1))
+        if window is None:
+            return pd.DataFrame()
+        start, end = window
         data = self.client.timeseries.get_range(
             dataset=dataset,
             symbols=[str(x) for x in ids],
             stype_in="instrument_id",
             schema="ohlcv-1d",
-            start=as_of.isoformat(),
-            end=(as_of + timedelta(days=1)).isoformat(),
+            start=start.isoformat(),
+            end=end.isoformat(),
         )
         frame = self._flatten(data.to_df())
         if frame.empty:

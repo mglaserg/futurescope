@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from datetime import date
 from pathlib import Path
 from typing import Literal
@@ -20,9 +19,24 @@ from futurescope.analytics.relative_value import (
     relative_value_zscore_history,
 )
 from futurescope.config import MARKETS
+from futurescope.data_manager import all_cache_status, backfill_curve_history
+from futurescope.environment import load_futurescope_env
 from futurescope.mean_reversion import mean_reversion_analysis
 from futurescope.research_logging import log_dashboard_look
 from futurescope.rv_store import CurveSnapshotStore, load_cached_curve_history, load_relative_value_curve
+
+
+# Load the repo-root .env before any provider is constructed. This mirrors the
+# Streamlit entrypoint and is intentionally explicit for the Uvicorn process.
+load_futurescope_env()
+
+
+class DataBackfillRequest(BaseModel):
+    market: str = Field(pattern="^[A-Za-z]{1,4}$")
+    start: date
+    end: date
+    sampling: Literal["business_daily", "weekly", "month_end"] = "business_daily"
+    force_refresh: bool = False
 
 
 class MeanReversionRequest(BaseModel):
@@ -61,7 +75,7 @@ def _records(frame: pd.DataFrame) -> list[dict]:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Futurescope API", version="0.2.0")
+    app = FastAPI(title="Futurescope API", version="0.3.0")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
@@ -72,11 +86,35 @@ def create_app() -> FastAPI:
 
     @app.get("/api/health")
     def health() -> dict[str, object]:
+        env = load_futurescope_env()
         return {
             "ok": True,
-            "databento_configured": bool(os.getenv("DATABENTO_API_KEY")),
+            "env_file_detected": env.env_file_exists,
+            "databento_configured": env.databento_configured,
             "markets": list(MARKETS),
         }
+
+    @app.get("/api/data/status")
+    def data_status() -> dict[str, object]:
+        return {"markets": [status.to_dict() for status in all_cache_status()]}
+
+    @app.post("/api/data/backfill")
+    def data_backfill(request: DataBackfillRequest) -> dict[str, object]:
+        env = load_futurescope_env()
+        if not env.databento_configured:
+            raise HTTPException(status_code=503, detail="DATABENTO_API_KEY is not loaded. Configure the repo-root .env and restart Futurescope Web.")
+        try:
+            return backfill_curve_history(
+                request.market,
+                request.start,
+                request.end,
+                sampling=request.sampling,
+                force_refresh=request.force_refresh,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     @app.get("/api/today/{market}")
     def today(
@@ -89,6 +127,16 @@ def create_app() -> FastAPI:
         if config is None:
             raise HTTPException(status_code=404, detail=f"Unknown market {symbol}")
         effective_as_of = as_of or date.today()
+        env = load_futurescope_env()
+        if not env.databento_configured:
+            env_note = ".env was found" if env.env_file_exists else ".env was not found at the repo root"
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "DATABENTO_API_KEY is not loaded (" + env_note + "). "
+                    "Put DATABENTO_API_KEY=... in the repo-root .env file and restart Futurescope Web."
+                ),
+            )
         try:
             curve = load_relative_value_curve(config, as_of=effective_as_of, refresh=refresh)
         except Exception as exc:

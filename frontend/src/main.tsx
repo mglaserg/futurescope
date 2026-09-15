@@ -2,7 +2,7 @@ import { StrictMode, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider, useMutation, useQuery } from '@tanstack/react-query'
 import type { EChartsOption } from 'echarts'
-import { api, type MeanReversionResponse, type StructureRow } from './api'
+import { api, type DataBackfillResponse, type MeanReversionResponse, type StructureRow } from './api'
 import { EChart } from './EChart'
 import './styles.css'
 
@@ -23,7 +23,7 @@ function pct(value: number | null | undefined) {
 }
 
 function App() {
-  const [view, setView] = useState<'today' | 'mean'>('today')
+  const [view, setView] = useState<'today' | 'data' | 'mean'>('today')
   const [market, setMarket] = useState('GC')
   const [asOf, setAsOf] = useState(todayIso())
 
@@ -43,17 +43,24 @@ function App() {
         </div>
         <div className={`status-pill ${health.data?.databento_configured ? 'ok' : ''}`}>
           <span className="dot" />
-          {health.data?.databento_configured ? 'Databento ready' : 'Databento key missing'}
+          {health.data?.databento_configured
+            ? 'Databento ready'
+            : health.data?.env_file_detected
+              ? 'Databento key missing in .env'
+              : '.env not found'}
         </div>
       </header>
 
       <nav className="segmented" aria-label="Primary">
         <button className={view === 'today' ? 'active' : ''} onClick={() => setView('today')}>Today</button>
+        <button className={view === 'data' ? 'active' : ''} onClick={() => setView('data')}>Data</button>
         <button className={view === 'mean' ? 'active' : ''} onClick={() => setView('mean')}>Mean Reversion Lab</button>
       </nav>
 
       {view === 'today' ? (
-        <TodayView market={market} setMarket={setMarket} asOf={asOf} setAsOf={setAsOf} data={today.data} loading={today.isLoading} error={today.error as Error | null} />
+        <TodayView market={market} setMarket={setMarket} asOf={asOf} setAsOf={setAsOf} data={today.data} loading={today.isLoading} error={today.error as Error | null} refresh={() => today.refetch()} />
+      ) : view === 'data' ? (
+        <DataManager market={market} setMarket={setMarket} />
       ) : (
         <MeanReversionLab market={market} setMarket={setMarket} />
       )}
@@ -61,7 +68,7 @@ function App() {
   )
 }
 
-function TodayView({ market, setMarket, asOf, setAsOf, data, loading, error }: {
+function TodayView({ market, setMarket, asOf, setAsOf, data, loading, error, refresh }: {
   market: string
   setMarket: (value: string) => void
   asOf: string
@@ -69,6 +76,7 @@ function TodayView({ market, setMarket, asOf, setAsOf, data, loading, error }: {
   data: Awaited<ReturnType<typeof api.today>> | undefined
   loading: boolean
   error: Error | null
+  refresh: () => void
 }) {
   const curveOption = useMemo<EChartsOption>(() => ({
     animation: false,
@@ -80,6 +88,7 @@ function TodayView({ market, setMarket, asOf, setAsOf, data, loading, error }: {
   }), [data])
 
   const rows = data?.structures?.['1'] ?? []
+  const refreshMutation = useMutation({ mutationFn: () => api.today(market, asOf, true), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['today', market, asOf] }); queryClient.invalidateQueries({ queryKey: ['dataStatus'] }); refresh() } })
   return (
     <main>
       <section className="hero-grid">
@@ -91,6 +100,8 @@ function TodayView({ market, setMarket, asOf, setAsOf, data, loading, error }: {
         <div className="control-card">
           <label>Market<select value={market} onChange={(e) => setMarket(e.target.value)}>{['GC','ES','CL','ZN','VX'].map((m) => <option key={m}>{m}</option>)}</select></label>
           <label>As of<input type="date" value={asOf} onChange={(e) => setAsOf(e.target.value)} /></label>
+          <button className="primary" onClick={() => refreshMutation.mutate()} disabled={refreshMutation.isPending}>{refreshMutation.isPending ? 'Refreshing Databento…' : 'Refresh this date'}</button>
+          <small className="muted">Force-refresh bypasses Futurescope's raw Databento request cache for this date.</small>
         </div>
       </section>
 
@@ -114,6 +125,67 @@ function StructureTable({ rows }: { rows: StructureRow[] }) {
   return <div className="table-wrap"><table><thead><tr><th>Location</th><th>Contracts</th><th>Raw value</th><th>Normalized</th><th>Span</th></tr></thead><tbody>
     {rows.map((row) => <tr key={`${row.order}-${row.position}`}><td>{row.tenor_label}</td><td>{row.leg_symbols}</td><td>{fmt(row.canonical_value, 4)}</td><td>{fmt(row.time_normalized_value, 4)}</td><td>{fmt(row.span_days, 0)}d</td></tr>)}
   </tbody></table></div>
+}
+
+function DataManager({ market, setMarket }: { market: string; setMarket: (value: string) => void }) {
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
+  const [start, setStart] = useState(ninetyDaysAgo)
+  const [end, setEnd] = useState(todayIso())
+  const [sampling, setSampling] = useState<'business_daily' | 'weekly' | 'month_end'>('business_daily')
+  const [forceRefresh, setForceRefresh] = useState(false)
+  const status = useQuery({ queryKey: ['dataStatus'], queryFn: api.dataStatus })
+  const mutation = useMutation({
+    mutationFn: api.backfill,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dataStatus'] })
+      queryClient.invalidateQueries({ queryKey: ['today'] })
+    },
+  })
+  const selected = status.data?.markets.find((row) => row.market === market)
+  const result: DataBackfillResponse | undefined = mutation.data
+
+  const run = () => mutation.mutate({ market, start, end, sampling, force_refresh: forceRefresh })
+  return <main>
+    <section className="hero-grid">
+      <div className="hero-copy">
+        <div className="eyebrow">DATA · DATABENTO</div>
+        <h2>Build the history Futurescope can actually research.</h2>
+        <p>Backfill local curve snapshots for the Mean Reversion Lab. Existing snapshots and raw Databento request-cache files are reused unless you explicitly force a redownload.</p>
+      </div>
+      <div className="control-card dense">
+        <label>Market<select value={market} onChange={(e) => setMarket(e.target.value)}>{['GC','ES','CL','ZN','VX'].map((m) => <option key={m}>{m}</option>)}</select></label>
+        <div className="control-row"><label>Start<input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label><label>End<input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label></div>
+        <label>Sampling<select value={sampling} onChange={(e) => setSampling(e.target.value as typeof sampling)}><option value="business_daily">Business daily</option><option value="weekly">Weekly</option><option value="month_end">Month end</option></select></label>
+        <label className="check-row"><input type="checkbox" checked={forceRefresh} onChange={(e) => setForceRefresh(e.target.checked)} /> Force redownload raw Databento requests</label>
+        <button className="primary" onClick={run} disabled={mutation.isPending || !start || !end}>{mutation.isPending ? 'Downloading history…' : 'Backfill curve history'}</button>
+        <small className="muted">Maximum 260 selected snapshot dates per batch. Current-day requests are automatically clipped to Databento's latest schema availability. Split longer daily histories into multiple ranges.</small>
+      </div>
+    </section>
+
+    <section className="metrics-grid data-metrics">
+      <Metric label={`${market} snapshots`} value={String(selected?.snapshots ?? 0)} sub={selected?.first_snapshot ? `${selected.first_snapshot} → ${selected.last_snapshot}` : 'No local history yet'} />
+      <Metric label="Raw cache" value={forceRefresh ? 'Bypass' : 'Reuse'} sub="Definitions + OHLCV-1d" />
+      <Metric label="Research source" value="Local snapshots" sub="Mean Reversion Lab reads this cache" />
+    </section>
+
+    {mutation.error && <div className="notice error">{(mutation.error as Error).message}</div>}
+    {result && <section className="panel">
+      <div className="panel-heading"><div><span className="eyebrow">BACKFILL COMPLETE</span><h3>{result.market} curve history</h3></div><span className="muted">{result.start} → {result.end}</span></div>
+      <div className="metrics-grid data-metrics">
+        <Metric label="Requested" value={String(result.requested)} sub={result.sampling.replace('_', ' ')} />
+        <Metric label="Downloaded" value={String(result.downloaded)} sub="new/refreshed snapshots" />
+        <Metric label="Reused" value={String(result.skipped_cached)} sub="already cached" />
+        <Metric label="Failures" value={String(result.failures.length)} sub={result.failures.length ? 'See details below' : 'clean batch'} />
+      </div>
+      {result.failures.length > 0 && <div className="notice error">{result.failures.slice(0, 10).map((failure) => <div key={failure.date}>{failure.date}: {failure.error}</div>)}</div>}
+      <div className="notice">{result.note}</div>
+    </section>}
+
+    <section className="panel">
+      <div className="panel-heading"><div><span className="eyebrow">CACHE INVENTORY</span><h3>What Futurescope has locally</h3></div></div>
+      <div className="table-wrap"><table><thead><tr><th>Market</th><th>Snapshots</th><th>First</th><th>Last</th></tr></thead><tbody>{status.data?.markets.map((row) => <tr key={row.market}><td>{row.market}</td><td>{row.snapshots}</td><td>{row.first_snapshot ?? '—'}</td><td>{row.last_snapshot ?? '—'}</td></tr>)}</tbody></table></div>
+    </section>
+  </main>
 }
 
 function MeanReversionLab({ market, setMarket }: { market: string; setMarket: (value: string) => void }) {

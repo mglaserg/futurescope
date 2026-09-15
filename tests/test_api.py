@@ -10,4 +10,6 @@ def test_api_routes_exist():
     paths = {route.path for route in app.routes}
     assert "/api/health" in paths
     assert "/api/today/{market}" in paths
+    assert "/api/data/status" in paths
+    assert "/api/data/backfill" in paths
     assert "/api/research/mean-reversion" in paths

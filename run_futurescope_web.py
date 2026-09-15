@@ -23,9 +23,22 @@ def main() -> int:
     try:
         import fastapi  # noqa: F401
         import uvicorn  # noqa: F401
+        import dotenv  # noqa: F401
     except ImportError:
         print("Installing Futurescope web API dependencies (first run only)…")
         subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(ROOT / "requirements-web.txt")], cwd=ROOT, check=True)
+    # Load the repo-root .env in the parent process so both the Uvicorn reloader
+    # and its worker inherit the same API credentials on Windows.
+    from futurescope.environment import load_futurescope_env
+
+    env_status = load_futurescope_env(ROOT)
+    if env_status.databento_configured:
+        print("Databento credentials: loaded from environment/.env")
+    elif env_status.env_file_exists:
+        print("WARNING: .env was found, but DATABENTO_API_KEY is missing or empty.")
+    else:
+        print(f"WARNING: no .env found at {ROOT / '.env'}")
+
     if not (FRONTEND / "node_modules").exists():
         print("Installing Futurescope React dependencies (first run only)…")
         subprocess.run([npm, "install", "--no-audit", "--no-fund"], cwd=FRONTEND, check=True)

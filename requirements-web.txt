@@ -2,3 +2,4 @@
 # so the existing uv.lock remains reproducible during the incremental migration.
 fastapi>=0.141.1
 uvicorn>=0.52.4
+python-dotenv>=1.0.0

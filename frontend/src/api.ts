@@ -1,5 +1,6 @@
 export type Health = {
   ok: boolean
+  env_file_detected: boolean
   databento_configured: boolean
   markets: string[]
 }
@@ -31,6 +32,27 @@ export type TodayResponse = {
   as_of: string
   curve: CurveRow[]
   structures: Record<string, StructureRow[]>
+}
+
+
+export type DataStatusRow = {
+  market: string
+  snapshots: number
+  first_snapshot: string | null
+  last_snapshot: string | null
+}
+
+export type DataBackfillResponse = {
+  market: string
+  sampling: string
+  start: string
+  end: string
+  requested: number
+  downloaded: number
+  skipped_cached: number
+  failures: Array<{ date: string; error: string }>
+  status: DataStatusRow
+  note: string
 }
 
 export type MeanReversionSummary = {
@@ -76,6 +98,13 @@ export const api = {
   health: () => fetchJson<Health>('/api/health'),
   today: (market: string, asOf: string, refresh = false) =>
     fetchJson<TodayResponse>(`/api/today/${market}?as_of=${asOf}&refresh=${refresh}`),
+  dataStatus: () => fetchJson<{ markets: DataStatusRow[] }>('/api/data/status'),
+  backfill: (payload: { market: string; start: string; end: string; sampling: 'business_daily' | 'weekly' | 'month_end'; force_refresh: boolean }) =>
+    fetchJson<DataBackfillResponse>('/api/data/backfill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }),
   meanReversion: (payload: {
     market: string
     order: number

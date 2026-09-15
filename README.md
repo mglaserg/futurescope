@@ -122,7 +122,7 @@ or:
 python run_futurescope_web.py
 ```
 
-On the first run the launcher installs the separate web API requirements and the Node packages if they are missing. React/Vite runs at `http://127.0.0.1:5173`; FastAPI runs at `http://127.0.0.1:8000` with OpenAPI docs at `/docs`. Vite 8 requires Node.js 20.19+ or 22.12+. See `docs/react_frontend.md`.
+On the first run the launcher installs the separate web API requirements and the Node packages if they are missing. The web launcher and FastAPI service explicitly load the repository-root `.env`, so the same `DATABENTO_API_KEY` used by Streamlit is available to the React/API path. The launcher prints whether `.env` was found and whether the key loaded. React/Vite runs at `http://127.0.0.1:5173`; FastAPI runs at `http://127.0.0.1:8000` with OpenAPI docs at `/docs`. Vite 8 requires Node.js 20.19+ or 22.12+. See `docs/react_frontend.md`.
 
 ## Mean reversion / first passage
 

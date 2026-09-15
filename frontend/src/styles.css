@@ -60,3 +60,8 @@ th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spa
 td { font-size: 14px; }
 @media (max-width: 1000px) { .metrics-grid { grid-template-columns: repeat(3, 1fr); } .split-grid, .hero-grid { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .app-shell { padding: 20px 14px 48px; } .topbar { align-items: flex-start; flex-direction: column; } .segmented { width: 100%; } .segmented button { flex: 1; } .metrics-grid { grid-template-columns: repeat(2, 1fr); } .control-row { grid-template-columns: 1fr; } }
+.check-row { display: flex; align-items: center; gap: 10px; text-transform: none; letter-spacing: normal; font-size: 13px; }
+.check-row input { width: 18px; min-height: auto; height: 18px; padding: 0; }
+.data-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1000px) { .data-metrics { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .data-metrics { grid-template-columns: 1fr; } }
