@@ -1,0 +1,4 @@
+# React/FastAPI frontend bridge. Kept separate from the locked Streamlit runtime
+# so the existing uv.lock remains reproducible during the incremental migration.
+fastapi>=0.141.1
+uvicorn>=0.52.4

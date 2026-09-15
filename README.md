@@ -41,6 +41,7 @@ The default Start page reduces the product to three questions: **See Today → E
 - **Curve Explorer** — individual futures curve and basis/carry view.
 - **VIX Complex** — VX curve plus official Cboe VIX-family indices.
 - **Relative Value** — finite-difference hierarchy: slope, butterfly, double butterfly.
+- **Mean Reversion Lab** — registered first-passage analysis from extreme z-scores back to the frozen entry mean or dynamic z=0, including hit-rate uncertainty, time-to-mean, MAE/MFE, censoring, and survival curves.
 - **Trade Builder** — exact basket legs, ratios, entry values, point-value economics, and research P&L concepts.
 - **Historical Playback** — cached curve replay and explicit retrospective reveals.
 - **Daily Opportunities** — historical search/ranking surface; scans are logged as research looks.
@@ -98,6 +99,45 @@ python run_futurescope.py --port 8502
 ```
 
 The launcher uses the active Python environment.
+
+
+## React / Node frontend
+
+The incremental frontend migration is now underway. Python remains authoritative for market data and research; the first React + TypeScript + Vite surface talks to a thin FastAPI layer. Streamlit remains available during the migration.
+
+The first migrated workflows are:
+
+- **Today** — current curve and calendar-slope map.
+- **Mean Reversion Lab** — registered first-passage research with z-score history and convergence survival.
+
+Run the React version on Windows:
+
+```powershell
+run_futurescope_web.bat
+```
+
+or:
+
+```powershell
+python run_futurescope_web.py
+```
+
+On the first run the launcher installs the separate web API requirements and the Node packages if they are missing. React/Vite runs at `http://127.0.0.1:5173`; FastAPI runs at `http://127.0.0.1:8000` with OpenAPI docs at `/docs`. Vite 8 requires Node.js 20.19+ or 22.12+. See `docs/react_frontend.md`.
+
+## Mean reversion / first passage
+
+The core mean-reversion question is now implemented directly rather than left as a roadmap note:
+
+```text
+Extreme z-score -> first passage back to mean -> time / MAE / MFE / P&L / censor reason
+```
+
+Futurescope starts non-overlapping episodes only when z crosses into a registered extreme. It supports two targets:
+
+- **Frozen entry mean** — preferred trading interpretation; the equilibrium level seen at entry cannot move toward the trade.
+- **Dynamic z = 0** — conventional rolling-z mean crossing.
+
+Roll boundaries and time stops are censored. Cross-roll jumps are not counted as convergence P&L. Historical queries are logged before results are revealed. See `docs/mean_reversion.md`.
 
 ## ES + GC Monitor
 
@@ -233,9 +273,9 @@ The new Cross-Market Curve Carry page is the "DirtyCarry of futures" research ca
 
 ## Current roadmap
 
-**Product/UI track:** the Streamlit app now has a simplified grouped navigation and Start page. The longer-term modernization remains **Python quant/data logic → thin FastAPI layer → React + TypeScript + Vite frontend**, migrated incrementally rather than as a big-bang rewrite. Freeze/test the Python calculation API first; then move the Daily Opportunity Dashboard, Curve/Synthetic Viewer, Trade Builder, and remaining monitors into the React terminal experience.
+**Product/UI track:** Phase 1 of the Node/React migration is now implemented: React + TypeScript + Vite plus a thin FastAPI boundary, with real **Today** and **Mean Reversion Lab** workflows. Streamlit remains supported while migration continues. Next React screens: Daily Opportunities, Curve/Synthetic Viewer, Trade Builder, then the remaining monitors.
 
-**Measurement track:** synthetic/constant-maturity tenors are now available for roll-clean 50d/80d-style curve measurements. Registered profitability/mean-reversion tests come later inside the audit workflow; the synthetic page itself is descriptive/current-state.
+**Measurement/research track:** synthetic/constant-maturity tenors are available for roll-clean 50d/80d-style measurements, and first-passage mean-reversion research for calendar spreads / butterflies is now implemented. The next work is to apply registered cost hurdles, dependence-adjusted uncertainty/N_eff, and market-specific validation rather than adding another generic signal layer.
 
 **Highest-priority strategy additions:** operate and harden the **SPY / MES + TLT/ZB Month-End Rebalance** monitor and research the new **Cross-Market Curve Carry** candidate. The imported hypothesis is frozen at ±50 bps of 60/40 bond rebalance pressure, with the signal measured at the sixth-last trading-day close. Futurescope keeps this page current-state-only; internal historical validation belongs in the registered EdgeLab workflow.
 

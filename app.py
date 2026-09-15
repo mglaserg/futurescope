@@ -70,6 +70,7 @@ def home() -> None:
             """,
             unsafe_allow_html=True,
         )
+        st.page_link("pages/12_Mean_Reversion.py", label="Mean Reversion Lab", icon="↩️")
         st.page_link("pages/4_Relative_Value.py", label="Relative Value Research", icon="〽️")
         st.page_link("pages/6_Historical_Playback.py", label="Historical Playback", icon="⏪")
         st.page_link("pages/7_Daily_Opportunities.py", label="Opportunity Research", icon="🔬")
@@ -105,6 +106,7 @@ pages = {
         st.Page("pages/10_Cross_Market_Curve_Carry.py", title="Curve Carry", icon="↕️", url_path="curve-carry"),
     ],
     "Research": [
+        st.Page("pages/12_Mean_Reversion.py", title="Mean Reversion", icon="↩️", url_path="mean-reversion"),
         st.Page("pages/4_Relative_Value.py", title="Relative Value", icon="〽️", url_path="relative-value"),
         st.Page("pages/6_Historical_Playback.py", title="Historical Playback", icon="⏪", url_path="playback"),
         st.Page("pages/7_Daily_Opportunities.py", title="Opportunity Research", icon="🔬", url_path="opportunities"),
